@@ -45,3 +45,7 @@ jobs:
         with:
           name: mpv-android
           path: app/build/outputs/apk/default/debug/app-default-armeabi-v7a-debug.apk
+      - name: mpv-android64
+        with:
+          name: mpv-android-64
+          path: app/build/outputs/apk/default/debug/app-default-arm64-v8a-debug.apk
