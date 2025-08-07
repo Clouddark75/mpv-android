@@ -50,7 +50,6 @@ import androidx.media.AudioManagerCompat
 import java.io.File
 import java.lang.IllegalArgumentException
 import kotlin.math.roundToInt
-import java.net.URLDecoder
 
 typealias ActivityResultCallback = (Int, Intent?) -> Unit
 typealias StateRestoreCallback = () -> Unit
@@ -62,26 +61,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     private val fadeHandler = Handler(Looper.getMainLooper())
     // for use with stopServiceRunnable
     private val stopServiceHandler = Handler(Looper.getMainLooper())
-    // Add this function to the MPVActivity class
-    private fun decodeLocalhostUrl(url: String): String {
-    if (!url.startsWith("http://127.0.0.1") && !url.startsWith("http://localhost")) {
-        return url
-    }
 
-    return try {
-        val lastSlash = url.lastIndexOf('/')
-        if (lastSlash > 0) {
-            val base = url.substring(0, lastSlash + 1)
-            val filename = URLDecoder.decode(url.substring(lastSlash + 1), "UTF-8")
-            base + filename
-        } else {
-            url
-        }
-    } catch (e: Exception) {
-        Log.w(TAG, "Failed to decode localhost URL: $url", e)
-        url
-    }
-}
     /**
      * DO NOT USE THIS
      */
@@ -1012,26 +992,16 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     // Intent/Uri parsing
 
     private fun parsePathFromIntent(intent: Intent): String? {
-    val uri = intent.data ?: intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
-    return when (intent.action) {
-        Intent.ACTION_VIEW -> uri?.resolveUri(this)?.let { decodeLocalhostUrl(it) }
-        Intent.ACTION_SEND -> {
-            if (intent.hasExtra(Intent.EXTRA_STREAM)) {
-                uri?.resolveUri(this)?.let { decodeLocalhostUrl(it) }
-            } else {
-                intent.getStringExtra(Intent.EXTRA_TEXT)?.let {
-                    val parsedUri = it.trim().toUri()
-                    if (parsedUri.isHierarchical && !parsedUri.isRelative) {
-                        parsedUri.resolveUri(this)?.let { resolved -> decodeLocalhostUrl(resolved) }
-                    } else {
-                        null
-                    }
-                }
+        val filepath = when (intent.action) {
+            Intent.ACTION_VIEW -> intent.data?.let { resolveUri(it) }
+            Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)?.let {
+                val uri = Uri.parse(it.trim())
+                if (uri.isHierarchical && !uri.isRelative) resolveUri(uri) else null
             }
+            else -> intent.getStringExtra("filepath")
         }
-        else -> intent.getStringExtra("filepath")?.let { decodeLocalhostUrl(it) }
+        return filepath
     }
-}
 
     private fun resolveUri(data: Uri): String? {
         val filepath = when (data.scheme) {
