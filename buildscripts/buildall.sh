@@ -7,8 +7,7 @@ cleanbuild=0
 nodeps=0
 clang=1
 target=mpv-android
-arch=armv7l
-arch=arm64
+archs=()  # Lista de arquitecturas seleccionadas por el usuario
 
 getdeps () {
 	varname="dep_${1//-/_}[*]"
@@ -20,8 +19,6 @@ loadarch () {
 	unset CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
 
 	local apilvl=21
-	# ndk_triple: what the toolchain actually is
-	# cc_triple: what Google pretends the toolchain is
 	if [ "$1" == "armv7l" ]; then
 		export ndk_suffix=
 		export ndk_triple=arm-linux-androideabi
@@ -43,7 +40,7 @@ loadarch () {
 		cc_triple=$ndk_triple$apilvl
 		prefix_name=x86_64
 	else
-		echo "Invalid architecture" >&2
+		echo "Invalid architecture: $1" >&2
 		exit 1
 	fi
 	export prefix_dir="$PWD/prefix/$prefix_name"
@@ -62,7 +59,6 @@ loadarch () {
 setup_prefix () {
 	if [ ! -d "$prefix_dir" ]; then
 		mkdir -p "$prefix_dir"
-		# enforce flat structure (/usr/local -> /)
 		ln -s . "$prefix_dir/usr"
 		ln -s . "$prefix_dir/local"
 	fi
@@ -75,8 +71,6 @@ setup_prefix () {
 		return 1
 	fi
 
-	# meson wants to be spoonfed this file, so create it ahead of time
-	# also define: release build, static libs and no source downloads at runtime(!!!)
 	cat >"$prefix_dir/crossfile.tmp" <<CROSSFILE
 [built-in options]
 buildtype = 'release'
@@ -97,7 +91,7 @@ cpu_family = '$cpu_family'
 cpu = '${CC%%-*}'
 endian = 'little'
 CROSSFILE
-	# also avoid rewriting it needlessly
+
 	if cmp -s "$prefix_dir"/crossfile.{tmp,txt}; then
 		rm "$prefix_dir/crossfile.tmp"
 	else
@@ -138,7 +132,8 @@ usage () {
 		"-n             Do not build dependencies" \
 		"--clean        Clean build dirs before compiling" \
 		"--gcc          Use gcc compiler (unsupported!)" \
-		"--arch <arch>  Build for specified architecture (default: $arch; supported: armv7l, arm64, x86, x86_64)"
+		"--arch <arch>  Specify architecture (repeatable: armv7l, arm64, x86, x86_64)" \
+		"-h, --help     Show this help message"
 	exit 0
 }
 
@@ -155,7 +150,7 @@ while [ $# -gt 0 ]; do
 		;;
 		--arch)
 		shift
-		arch=$1
+		archs+=("$1")
 		;;
 		-h|--help)
 		usage
@@ -171,9 +166,20 @@ while [ $# -gt 0 ]; do
 	shift
 done
 
-loadarch $arch
-setup_prefix
-build $target
+# Si no se especificaron arquitecturas, usar todas por defecto
+if [ ${#archs[@]} -eq 0 ]; then
+	archs=(armv7l arm64 x86 x86_64)
+fi
+
+for arch in "${archs[@]}"; do
+	echo
+	echo "==============================="
+	echo "Building for architecture: $arch"
+	echo "==============================="
+	loadarch $arch
+	setup_prefix
+	build $target
+done
 
 [ "$target" == "mpv-android" ] && \
 	ls -lh ../app/build/outputs/apk/{default,api29}/*/*.apk
