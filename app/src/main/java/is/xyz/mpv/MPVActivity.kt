@@ -83,7 +83,6 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             val safeFilename = decodedFilename
                 .replace("#", "%23")  // # must stay encoded as it's a fragment identifier
                 .replace("?", "%3F")  // ? starts query parameters
-                .replace("&", "%26")  // & separates query parameters
             
             pathPart + safeFilename
         }
