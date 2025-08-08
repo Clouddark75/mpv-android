@@ -70,15 +70,18 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
     return try {
         val lastSlash = url.lastIndexOf('/')
-        if (lastSlash > 0) {
-            val base = url.substring(0, lastSlash + 1)
-            val filename = URLDecoder.decode(url.substring(lastSlash + 1), "UTF-8")
-            base + filename
-        } else {
+        if (lastSlash == -1 || lastSlash == url.length - 1) {
+            // No filename part to decode
             url
+        } else {
+            // Split into path + filename, decode only the filename
+            val pathPart = url.substring(0, lastSlash + 1)
+            val filename = url.substring(lastSlash + 1)
+            val decodedFilename = URLDecoder.decode(filename, "UTF-8")
+            pathPart + decodedFilename
         }
     } catch (e: Exception) {
-        Log.w(TAG, "Failed to decode localhost URL: $url", e)
+        Log.w(TAG, "Failed to decode localhost URL filename: $url", e)
         url
     }
 }
