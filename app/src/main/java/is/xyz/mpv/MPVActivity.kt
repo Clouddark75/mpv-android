@@ -402,7 +402,13 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     }
 
     private fun updateAudioPresence() {
-        isPlayingAudio = !(player.aid == -1 || MPVLib.getPropertyBoolean("mute") == true)
+        val haveAudio = MPVLib.getPropertyBoolean("current-tracks/audio/selected")
+        if (haveAudio == null) {
+            // If we *don't know* if there's an active audio track then don't update to avoid
+            // spurious UI changes. The property will become available again later.
+            return
+        }
+        isPlayingAudio = (haveAudio && MPVLib.getPropertyBoolean("mute") != true)
     }
 
     private fun isPlayingAudioOnly(): Boolean {
@@ -1384,7 +1390,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
                 }
         )
 
-        if (player.aid == -1)
+        if (!isPlayingAudio)
             hiddenButtons.add(R.id.backgroundBtn)
         if ((MPVLib.getPropertyInt("chapter-list/count") ?: 0) == 0)
             hiddenButtons.add(R.id.rowChapter)
@@ -1804,7 +1810,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         if (!activityIsForeground) return
         when (property) {
             "track-list" -> player.loadTracks()
-            "aid", "current-tracks/video/image" -> updateAudioUI()
+            "current-tracks/audio/selected", "current-tracks/video/image" -> updateAudioUI()
             "hwdec-current" -> updateDecoderButton()
         }
         if (metaUpdated)
@@ -1864,11 +1870,11 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
                 1 -> PlaybackStateCompat.REPEAT_MODE_ALL
                 else -> PlaybackStateCompat.REPEAT_MODE_NONE
             })
-        } else if (property == "aid") {
+        } else if (property == "current-tracks/audio/selected") {
             updateAudioPresence()
         }
 
-        if (property == "pause" || property == "aid")
+        if (property == "pause" || property == "current-tracks/audio/selected")
             handleAudioFocus()
 
         if (!activityIsForeground) return
