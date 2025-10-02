@@ -411,11 +411,13 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         isPlayingAudio = (haveAudio && MPVLib.getPropertyBoolean("mute") != true)
     }
 
-    private fun isPlayingAudioOnly(): Boolean {
+    /**
+     * @return null if unknown
+     */
+    private fun isPlayingAudioOnly(): Boolean? {
         if (!isPlayingAudio)
             return false
-        val image = MPVLib.getPropertyString("current-tracks/video/image")
-        return image.isNullOrEmpty() || image == "yes"
+        return MPVLib.getPropertyBoolean("current-tracks/video/image")
     }
 
     private fun shouldBackground(): Boolean {
@@ -423,7 +425,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             return false
         return when (backgroundPlayMode) {
             "always" -> true
-            "audio-only" -> isPlayingAudioOnly()
+            "audio-only" -> isPlayingAudioOnly() ?: false
             else -> false // "never"
         }
     }
@@ -655,7 +657,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     private fun pauseForDialog(): StateRestoreCallback {
         val useKeepOpen = when (noUIPauseMode) {
             "always" -> true
-            "audio-only" -> isPlayingAudioOnly()
+            "audio-only" -> isPlayingAudioOnly() ?: false
             else -> false // "never"
         }
         if (useKeepOpen) {
@@ -1047,7 +1049,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             "content" -> translateContentUri(data)
             // mpv supports data URIs but needs data:// to pass it through correctly
             "data" -> "data://${data.schemeSpecificPart}"
-            "http", "https", "rtmp", "rtmps", "rtp", "rtsp", "mms", "mmst", "mmsh", "tcp", "udp", "lavf"
+            "http", "https", "rtmp", "rtmps", "rtp", "rtsp", "mms", "mmst", "mmsh",
+            "tcp", "udp", "lavf", "ftp"
             -> data.toString()
             else -> null
         }
@@ -1564,7 +1567,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
                 R.id.cycleDecoderBtn, R.id.cycleSpeedBtn)
 
         val shouldUseAudioUI = isPlayingAudioOnly()
-        if (shouldUseAudioUI == useAudioUI)
+        if (shouldUseAudioUI == null || shouldUseAudioUI == useAudioUI)
             return
         useAudioUI = shouldUseAudioUI
         Log.v(TAG, "Audio UI: $useAudioUI")
