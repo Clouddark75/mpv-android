@@ -411,13 +411,11 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         isPlayingAudio = (haveAudio && MPVLib.getPropertyBoolean("mute") != true)
     }
 
-    /**
-     * @return null if unknown
-     */
-    private fun isPlayingAudioOnly(): Boolean? {
+    private fun isPlayingAudioOnly(): Boolean {
         if (!isPlayingAudio)
             return false
-        return MPVLib.getPropertyBoolean("current-tracks/video/image")
+        val image = MPVLib.getPropertyString("current-tracks/video/image")
+        return image.isNullOrEmpty() || image == "yes"
     }
 
     private fun shouldBackground(): Boolean {
@@ -425,7 +423,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             return false
         return when (backgroundPlayMode) {
             "always" -> true
-            "audio-only" -> isPlayingAudioOnly() ?: false
+            "audio-only" -> isPlayingAudioOnly()
             else -> false // "never"
         }
     }
@@ -657,7 +655,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     private fun pauseForDialog(): StateRestoreCallback {
         val useKeepOpen = when (noUIPauseMode) {
             "always" -> true
-            "audio-only" -> isPlayingAudioOnly() ?: false
+            "audio-only" -> isPlayingAudioOnly()
             else -> false // "never"
         }
         if (useKeepOpen) {
@@ -1567,7 +1565,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
                 R.id.cycleDecoderBtn, R.id.cycleSpeedBtn)
 
         val shouldUseAudioUI = isPlayingAudioOnly()
-        if (shouldUseAudioUI == null || shouldUseAudioUI == useAudioUI)
+        if (shouldUseAudioUI == useAudioUI)
             return
         useAudioUI = shouldUseAudioUI
         Log.v(TAG, "Audio UI: $useAudioUI")
