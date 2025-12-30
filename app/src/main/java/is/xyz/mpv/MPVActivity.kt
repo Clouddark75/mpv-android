@@ -1096,10 +1096,11 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
             else -> {
                 // Custom intent from MainScreenFragment
+                } 
                 else -> intent.getStringExtra("filepath")
             }
             return filepath?.let { decodeLocalhostUrl(it) }
-    }
+    }   
 
     private fun resolveUri(data: Uri): String? {
         val filepath = when (data.scheme) {
