@@ -66,7 +66,6 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     // for use with stopServiceRunnable
     private val stopServiceHandler = Handler(Looper.getMainLooper())
    // Add this function to the MPVActivity class
-    // Add this function to the MPVActivity class
     private fun decodeLocalhostUrl(url: String): String {
         if (!url.startsWith("http://127.0.0.1") && !url.startsWith("http://localhost")) {
             return url
