@@ -5,6 +5,7 @@ import `is`.xyz.mpv.MPVLib.MpvEvent
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.annotation.SuppressLint
+import android.app.ForegroundServiceStartNotAllowedException
 import androidx.appcompat.app.AlertDialog
 import android.app.PictureInPictureParams
 import android.app.RemoteAction
@@ -39,6 +40,7 @@ import androidx.annotation.LayoutRes
 import androidx.annotation.RequiresApi
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.IntentCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -413,6 +415,20 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         onPauseImpl()
     }
 
+    private fun tryStartForegroundService(intent: Intent): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                ContextCompat.startForegroundService(this, intent)
+            } catch (e: ForegroundServiceStartNotAllowedException) {
+                Log.w(TAG, e)
+                return false
+            }
+        } else {
+            ContextCompat.startForegroundService(this, intent)
+        }
+        return true
+    }
+
     private fun onPauseImpl() {
         val fmt = MPVLib.getPropertyString("video-format")
         val shouldBackground = shouldBackground()
@@ -441,7 +457,10 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             Log.v(TAG, "Resuming playback in background")
             stopServiceHandler.removeCallbacks(stopServiceRunnable)
             val serviceIntent = Intent(this, BackgroundPlaybackService::class.java)
-            ContextCompat.startForegroundService(this, serviceIntent)
+            if (!tryStartForegroundService(serviceIntent)) {
+                didResumeBackgroundPlayback = false
+                player.paused = true
+            }
         }
     }
 
@@ -1003,15 +1022,54 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     // Intent/Uri parsing
 
     private fun parsePathFromIntent(intent: Intent): String? {
-        val filepath = when (intent.action) {
-            Intent.ACTION_VIEW -> intent.data?.let { resolveUri(it) }
-            Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)?.let {
-                val uri = Uri.parse(it.trim())
-                if (uri.isHierarchical && !uri.isRelative) resolveUri(uri) else null
-            }
-            else -> intent.getStringExtra("filepath")
+        fun safeResolveUri(u: Uri?): String? {
+            return if (u != null && u.isHierarchical && !u.isRelative)
+                resolveUri(u)
+            else null
         }
-        return filepath
+
+        return when (intent.action) {
+            Intent.ACTION_VIEW -> {
+                // Normal file open or URL view
+                intent.data?.let { resolveUri(it) }
+            }
+
+            Intent.ACTION_SEND -> {
+                // Handle single shared file or text link
+                var parsed = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+                if (parsed == null) {
+                    parsed = intent.getStringExtra(Intent.EXTRA_TEXT)?.let {
+                        Uri.parse(it.trim())
+                    }
+                }
+
+                safeResolveUri(parsed)
+            }
+
+            Intent.ACTION_SEND_MULTIPLE -> {
+                // Multiple shared files
+                val uris = IntentCompat.getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+                if (!uris.isNullOrEmpty()) {
+                    val paths = uris.mapNotNull { uri ->
+                        safeResolveUri(uri)
+                    }
+                    if (paths.size == 1) {
+                        return paths[0]
+                    } else if (!paths.isEmpty()) {
+                        // Use a memory playlist
+                        val memoryUri = "memory://#EXTM3U\n${paths.joinToString("\n")}\n"
+                        Log.v(TAG, "Created memory playlist URI (${paths.size})")
+                        return memoryUri
+                    }
+                }
+                return null
+            }
+
+            else -> {
+                // Custom intent from MainScreenFragment
+                intent.getStringExtra("filepath")
+            }
+        }
     }
 
     private fun resolveUri(data: Uri): String? {
@@ -1279,6 +1337,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             restoreState()
             return
         }
+
+        Utils.handleInsetsAsPadding(dialogView)
 
         with (builder) {
             setView(dialogView)
