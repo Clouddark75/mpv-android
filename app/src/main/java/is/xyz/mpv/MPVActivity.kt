@@ -53,6 +53,7 @@ import androidx.media.AudioManagerCompat
 import java.io.File
 import java.lang.IllegalArgumentException
 import kotlin.math.roundToInt
+import java.net.URLDecoder
 
 typealias ActivityResultCallback = (Int, Intent?) -> Unit
 typealias StateRestoreCallback = () -> Unit
@@ -64,7 +65,35 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     private val fadeHandler = Handler(Looper.getMainLooper())
     // for use with stopServiceRunnable
     private val stopServiceHandler = Handler(Looper.getMainLooper())
-
+   // Add this function to the MPVActivity class
+    private fun decodeLocalhostUrl(url: String): String {
+        if (!url.startsWith("http://127.0.0.1") && !url.startsWith("http://localhost")) {
+            return url
+        }
+    
+        return try {
+            val lastSlash = url.lastIndexOf('/')
+            if (lastSlash == -1 || lastSlash == url.length - 1) {
+                // No filename part to decode
+                url
+            } else {
+                // Split into path + filename, decode only the filename
+                val pathPart = url.substring(0, lastSlash + 1)
+                val filename = url.substring(lastSlash + 1)
+                val decodedFilename = URLDecoder.decode(filename, "UTF-8")
+                
+                // Re-encode problematic characters that break URLs
+                val safeFilename = decodedFilename
+                    .replace("#", "%23")  // # must stay encoded as it's a fragment identifier
+                    .replace("?", "%3F")  // ? starts query parameters
+                
+                pathPart + safeFilename
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to decode localhost URL filename: $url", e)
+            url
+        }
+    }
     /**
      * DO NOT USE THIS
      */
@@ -1020,18 +1049,18 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     }
 
     // Intent/Uri parsing
-
+    // Replace your existing parsePathFromIntent function with this updated version:
     private fun parsePathFromIntent(intent: Intent): String? {
         fun safeResolveUri(u: Uri?): String? {
             return if (u != null && u.isHierarchical && !u.isRelative)
-                resolveUri(u)
+                resolveUri(u)?.let { decodeLocalhostUrl(it) }
             else null
         }
 
         return when (intent.action) {
             Intent.ACTION_VIEW -> {
                 // Normal file open or URL view
-                intent.data?.let { resolveUri(it) }
+                intent.data?.let { resolveUri(it) }?.let { decodeLocalhostUrl(it) }
             }
 
             Intent.ACTION_SEND -> {
@@ -1067,7 +1096,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
             else -> {
                 // Custom intent from MainScreenFragment
-                intent.getStringExtra("filepath")
+                intent.getStringExtra("filepath")?.let { decodeLocalhostUrl(it) }
             }
         }
     }
