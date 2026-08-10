@@ -6,8 +6,8 @@
 v_sdk=11076708_latest
 v_ndk=r29
 v_ndk_n=29.0.14206865
-v_sdk_platform=35
-v_sdk_build_tools=35.0.0
+v_sdk_platform=36
+v_sdk_build_tools=36.0.0
 
 v_lua=5.2.4
 v_unibreak=7.0
@@ -42,7 +42,7 @@ dep_mpv_android=(mpv)
 ## for CI workflow
 
 # pinned ffmpeg revision
-v_ci_ffmpeg=n8.1.2
+v_ci_ffmpeg=n9.0
 
 # filename used to uniquely identify a build prefix
 ci_tarball="prefix-n${v_ndk}-l${v_lua}-u${v_unibreak}-h${v_harfbuzz}-fr${v_fribidi}-ft${v_freetype}-x${v_libxml2}-fo${v_fontconfig}-m${v_mbedtls}-c${v_curl}-ff${v_ci_ffmpeg}.tgz"
