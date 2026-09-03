@@ -485,12 +485,6 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
     private fun onPauseImpl() {
         val shouldBackground = shouldBackground()
-        if (shouldBackground)
-            BackgroundPlaybackService.grabThumbnail()
-        else
-            BackgroundPlaybackService.thumbnail = null
-        // media session uses the same thumbnail
-        updateMediaSession()
 
         activityIsForeground = false
         eventUiHandler.removeCallbacksAndMessages(null)
@@ -501,6 +495,9 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             MPVLib.command(arrayOf("stop"))
         } else if (!shouldBackground) {
             player.paused = true
+            // clear any old thumbnails
+            BackgroundPlaybackService.thumbnail = null
+            updateMediaSession()
         }
         writeSettings()
         super.onPause()
