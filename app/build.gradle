@@ -41,6 +41,14 @@ android {
         buildConfig = true
     }
 
+    buildTypes {
+        release {
+            minifyEnabled = true
+            shrinkResources = true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
     splits {
         abi {
             enable true
