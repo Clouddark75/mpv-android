@@ -11,8 +11,8 @@ android {
         minSdkVersion 23
         targetSdk 36
 
-        versionCode 47
-        versionName "2026-08-11-release"
+        versionCode 48
+        versionName "2026-09-17-release"
 
         vectorDrawables.useSupportLibrary = true
 
@@ -51,7 +51,9 @@ android {
 
     splits {
         abi {
-            enable true
+            // workaround: AGP fails to build split APKs and a bundle at the same time
+            enable !gradle.startParameter.taskNames.any { it.startsWith("bundle") }
+
             reset()
             // include only the ABIs that were actually built
             project.ext.abiCodes.each { abi, _ ->
