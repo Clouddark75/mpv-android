@@ -35,16 +35,11 @@ internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(cont
             "no"
 
         // vo: set display fps as reported by android
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val disp = ContextCompat.getDisplayOrDefault(context)
-            val refreshRate = disp.mode.refreshRate
+        val disp = ContextCompat.getDisplayOrDefault(context)
+        val refreshRate = disp.mode.refreshRate
 
-            Log.v(TAG, "Display ${disp.displayId} reports FPS of $refreshRate")
-            MPVLib.setOptionString("display-fps-override", refreshRate.toString())
-        } else {
-            Log.v(TAG, "Android version too old, disabling refresh rate functionality " +
-                       "(${Build.VERSION.SDK_INT} < ${Build.VERSION_CODES.M})")
-        }
+        Log.v(TAG, "Display ${disp.displayId} reports FPS of $refreshRate")
+        MPVLib.setOptionString("display-fps-override", refreshRate.toString())
 
         // set non-complex options
         data class Property(val preferenceName: String, val mpvOption: String)
@@ -103,6 +98,7 @@ internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(cont
         MPVLib.setOptionString("tls-verify", "yes")
         MPVLib.setOptionString("tls-ca-file", "${this.context.filesDir.path}/cacert.pem")
         MPVLib.setOptionString("input-default-bindings", "yes")
+        MPVLib.setOptionString("flatten-editions", "yes")
         // Limit demuxer cache since the defaults are too high for mobile devices
         val cacheMegs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) 64 else 32
         MPVLib.setOptionString("demuxer-max-bytes", "${cacheMegs * 1024 * 1024}")
